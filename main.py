@@ -19,7 +19,7 @@ def log(massage, level="info"):
     print(f"[{level}]: {massage}")
 
 class ReManga_downloader:
-    def __init__(self, ):
+    def __init__(self):
         self.download_attempts = 3
         self.pause_between_download_attempts = 5
         self.use_cash = [1, 0]      # включение использования кеша данных парсера и обработанных данных
@@ -106,14 +106,18 @@ class ReManga_downloader:
         also_exist_id = []
 
         # получение данных записанных в кэше
-        cash = work_wich_cash("serv_resp", "download")
+        cash = self.work_wich_cash("serv_resp", "download")
         dataset = cash if not type(cash) == int else {}
 
         # Формирование id глав хранимых в хэше
-        also_exist_id = get_chapter_id_from_cash(dataset)
+        also_exist_id = self.get_chapter_id_from_cash(dataset)
+
+        if test_mode:
+            log(f"Входные данные: \n{chapter_id_list}\n")
 
         # Парсинг данных
-        for manga_name, chapter_id_list in manga_download_list.items():
+        for manga_name, chapter_id_list in chapter_id_list.items():
+            manga_name = manga_name.replace(" ", "_")
 
             server_json_list = []
             for chapter_id in chapter_id_list:
@@ -132,24 +136,26 @@ class ReManga_downloader:
                             response.raise_for_status()  # Проверка на ошибки HTTP
                             data = response.json()
                             log(f"Response successful received from server")
-                            break
                         else:
                             log(f"Response from url: {url}")
-                            data = "TEST"
+                            data = {"test_mode": True, "messege": "test", "chapter_id": chapter_id, "request_url": url}
+
+                        break
 
                     except Exception as e:
                         log(f"request error. attempt: {i+1}/{attempts}\nError: {e}", "error")
                         time.sleep(self.pause_between_download_attempts)
 
                 server_json_list.append(data)
-
-            # TODO Возникнет ошибкка если изначально словарь будет пуст
-            dataset[manga_name].append(server_json_list)
+                
+            dataset.setdefault(manga_name, []).extend(server_json_list)
             time.sleep(2)
 
         # Обновление хэша
         if not test_mode:
             status = work_wich_cash("serv_resp", "save", dataset)
+        else:
+            print(dataset)
 
         return dataset
 
@@ -379,7 +385,7 @@ def main():
 
 
 if __name__ == "__main__":
-    c = ReManga_downloader(manga_download_list)
+    c = ReManga_downloader()
 
     url_set = [
         "https://remanga.org/manga/job-search-guide/1743839",
@@ -405,10 +411,10 @@ if __name__ == "__main__":
 
     ot_data = c.get_json_data_from_server(c_data ,test_mode=True)
 
-    for i in c_data:
-        for i1 in c_data[i]:
-
-            print(i, i1)
+#    for i in ot_data:
+#        for i1 in ot_data[i]:
+#
+#            print(i, i1)
 
     pass
 
