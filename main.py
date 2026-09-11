@@ -22,7 +22,6 @@ class ReManga_downloader:
     def __init__(self):
         self.download_attempts = 3
         self.pause_between_download_attempts = 5
-        self.use_cash = [1, 0]      # включение использования кеша данных парсера и обработанных данных
 
     
     def manga_download_url_to_id_formater(self, title_name, url_list:list):
@@ -160,44 +159,6 @@ class ReManga_downloader:
         return dataset
 
 
-    def get_dataset_for_site(self, chapter_id_list:dict):
-        """
-        Отправлет запрос и получает json с сайта
-        """
-
-        # TODO Сдетать следующее:
-        # С начала загружается json c кэша
-        # Если в кэше нет главы с данным id то идет загрузка
-        # В конце полученный результат записывается в кэш
-        # Запись: cach = cash + new_data
-
-        out_data = {}
-        for manga_name, chapter_id_list in manga_download_list.items():
-
-            server_json_list = []
-            for chapter_id in chapter_id_list:
-                data = {"error": None}
-
-                for i in range(self.download_attempts):
-                    url = f"https://api.remanga.org/api/v2/titles/chapters/{chapter_id}/"
-                    
-                    try:
-                        response = self.reqSession.get(url)
-                        response.raise_for_status()  # Проверка на ошибки HTTP
-                        data = response.json()
-                        log(f"Response successful received from server")
-                        break
-                    except Exception as e:
-                        log(f"request error. attempt: {i+1}/{attempts}\nError: {e}", "error")
-                        time.sleep(self.pause_between_download_attempts)
-
-                server_json_list.append(data)
-
-            out_data[manga_name] = server_json_list
-
-            time.sleep(2)
-
-        return out_data
 
     def pars_json_data(self, data):
         """
@@ -219,10 +180,6 @@ class ReManga_downloader:
                 # Издатеть / переводчик / автор
                 publisher_list = [publisher.get("name") for publisher in json_resp["publishers"]]
 
-        #        publisher_list = []
-        #        for publisher in data["publishers"]:
-        #            publisher_list.append(publisher.get("name"))
-
                 chapt_pars_data = {
                     "manga_name": manga_name,
                     "tome": json_resp.get("tome"),
@@ -241,7 +198,7 @@ class ReManga_downloader:
 
     def convert_for_download(self, data):
         """
-        Берет на вход сформированные данные, и возвращает готовый лист с данными для вставки в функцию скачивания
+        Берет на вход обработанные данные, и возвращает готовый лист с данными для вставки в функцию скачивания
         """
         
         out_list = []
@@ -255,17 +212,17 @@ class ReManga_downloader:
             chapter_name = chapter["name"]
             publ = chapter["publishers"][0]
 
-            up_path = f"{publ}-{manga_name.replace(" ", "_")}"
+            root = f"{publ}-{manga_name.replace(" ", "_")}"
             down_path = f"{chapter_num}-{chapter_name.replace(" ", "_")}" if not chapter_name == "" else chapter_num
 
-            path = os.path.join(up_path, str(tome), f"{chapter_num}-{chapter_name.replace(" ", "_")}")
+            save_path = os.path.join(str(tome), f"{chapter_num}-{chapter_name.replace(" ", "_")}")
 
             #os.makedirs(pre_path, exist_ok=True)
 
             for num, page in chapter["pages"].items():
                 name = f"{num}{os.path.splitext(page)[1]}"
                 
-                out_list.append([path, name, page])
+                out_list.append([root, save_path, name, page])
 
         return out_list     # 
 
@@ -275,13 +232,14 @@ class ReManga_downloader:
         Функция пакетного скачивания файлов
         принимает на вход лист формата:
         [[path, file_name, url], ...]
+        [root, save_path, name, page]
         """
         
         over_parts = len(download_data)
         for i, part in enumerate(download_data, start=1):
-            path = part[0]
-            file_name = part[1]
-            url = part[2]
+            path = os.path.join(part[0], part[1])
+            file_name = part[2]
+            url = part[3]
 
             log(f"Загрузка страницы: {i}/{over_parts}")
 
@@ -295,8 +253,12 @@ class ReManga_downloader:
                 with open(os.path.join(path, file_name), 'wb') as f:
                     for chunk in r.iter_content(chunk_size=4024):
                         f.write(chunk)
+
     
     def work_wich_cash(self, cash_type, mode="auto", data=None):
+        """
+        Функция работы с кешем.
+        """
 
         cash_dir = "cash"
         files = {
@@ -343,41 +305,124 @@ class ReManga_downloader:
             raise Exception(f"Mode {mode} unknow")
             return 2
 
+## Пока что начальная функция 
+
+    def gen_info_file(self, proc_dataset, tags, genes language="ru"):
+
+        for manga_name, json_data_list in proc_dataset.items():
+            total_volumes = len(json_data_list) 
+                
+            authors = []
+            for publisher in json_data_list[0]["publishers"]
+                authors.append(publisher["name"])
+
+            root = f"{authors[0]}-{manga_name.replace(" ", "_")}"
+            title = manga_name.replace("_", " ")
+            
+
+#        self.root: str = ""                     #!< Путь к корневой папке произведения
+#        self.authors: list = None               #!< Список авторов
+#        self.title: str = None                  #!< Название
+#        self.alt_titles: list = None            #!< Альтернативные назания
+#        self.language: str = None               #!< Язык
+#        self.tags: list = None                  #!< Список тегов
+#        self.genes: list = None                 #!< Список жанров
+#        self.book_type: Optional[str] = None    #!< Тип:
+#        self.total_chapter: int = 0                #!< Общее количество томов
+#        self.total_volumes: int = 0             #!< Общее количество глав
+#        self.description: Optional[str] = None  #!< Описание
+        pass
+    
+    def main(chapter_list):
+
+        # Формируем первичные данные
+        dataset = get_json_data_from_server(chapter_list)
+
+        # Обрабатываем данные
+        proc_dataset = pars_json_data()
+
+        # Нормализуем данные для скачивания
+        norm_download_data = convert_for_download()
+
+        #gen_info_file(norm_download_data[0][0], proc_dataset)
+
+        # Скачиваем данные
+        download_pic(norm_download_data)
+        pass
+
         
-    def load_data_from_cash(self):
-        cash_file_from_the_resp = "cash_resp"
-        cash_file_from_the_proc_resp = "cash_prrsp"
+#    def load_data_from_cash(self):
+#        cash_file_from_the_resp = "cash_resp"
+#        cash_file_from_the_proc_resp = "cash_prrsp"
+#
+#        # Работа с кэшем запрощеных глав
+#        if os.path.isfile(cash_file_from_the_resp) and self.use_cash[0]:
+#
+#            log("Использоание кеша данных с сервера")
+#            with open(cash_file_from_the_resp, "r") as f:
+#                dataset = json.load(f)
+#
+#        else:
+#            log("Создание кеша данных сервера")
+#            dataset = self.get_dataset_for_site(self.manga_download_data)
+#
+#            with open(cash_file_from_the_resp, "w") as f:
+#                json.dump(dataset, f, indent=4, ensure_ascii=False)
+#
+#
+#        # Работа с обработанным кэшем
+#        if(os.path.isfile(cash_file_from_the_proc_resp) and self.use_cash[1]):
+#            log("Использоание кеша обработанных данных")
+#            with open(cash_file_from_the_proc_resp, "r") as f:
+#                data = json.load(f)
+#
+#        else:
+#            log("Создание кеша обработанных данных")
+#            data = self.pars_json_data(dataset)
+#
+#            with open(cash_file_from_the_proc_resp, "w") as f:
+#                json.dump(data, f, indent=4, ensure_ascii=False)
+#
+#        return data
 
-        # Работа с кэшем запрощеных глав
-        if os.path.isfile(cash_file_from_the_resp) and self.use_cash[0]:
-
-            log("Использоание кеша данных с сервера")
-            with open(cash_file_from_the_resp, "r") as f:
-                dataset = json.load(f)
-
-        else:
-            log("Создание кеша данных сервера")
-            dataset = self.get_dataset_for_site(self.manga_download_data)
-
-            with open(cash_file_from_the_resp, "w") as f:
-                json.dump(dataset, f, indent=4, ensure_ascii=False)
-
-
-        # Работа с обработанным кэшем
-        if(os.path.isfile(cash_file_from_the_proc_resp) and self.use_cash[1]):
-            log("Использоание кеша обработанных данных")
-            with open(cash_file_from_the_proc_resp, "r") as f:
-                data = json.load(f)
-
-        else:
-            log("Создание кеша обработанных данных")
-            data = self.pars_json_data(dataset)
-
-            with open(cash_file_from_the_proc_resp, "w") as f:
-                json.dump(data, f, indent=4, ensure_ascii=False)
-
-
-        return data
+#    def get_dataset_for_site(self, chapter_id_list:dict):
+#        """
+#        Отправлет запрос и получает json с сайта
+#        """
+#
+#        # TODO Сдетать следующее:
+#        # С начала загружается json c кэша
+#        # Если в кэше нет главы с данным id то идет загрузка
+#        # В конце полученный результат записывается в кэш
+#        # Запись: cach = cash + new_data
+#
+#        out_data = {}
+#        for manga_name, chapter_id_list in manga_download_list.items():
+#
+#            server_json_list = []
+#            for chapter_id in chapter_id_list:
+#                data = {"error": None}
+#
+#                for i in range(self.download_attempts):
+#                    url = f"https://api.remanga.org/api/v2/titles/chapters/{chapter_id}/"
+#                    
+#                    try:
+#                        response = self.reqSession.get(url)
+#                        response.raise_for_status()  # Проверка на ошибки HTTP
+#                        data = response.json()
+#                        log(f"Response successful received from server")
+#                        break
+#                    except Exception as e:
+#                        log(f"request error. attempt: {i+1}/{attempts}\nError: {e}", "error")
+#                        time.sleep(self.pause_between_download_attempts)
+#
+#                server_json_list.append(data)
+#
+#            out_data[manga_name] = server_json_list
+#
+#            time.sleep(2)
+#
+#        return out_data
 
 def main():
 
