@@ -7,14 +7,6 @@ import requests, json, time, os
 
 # ID главы из URL страницы (например, .../job-search-guide/1743839/)
 
-manga_download_list = {
-    "Пособие по поиску работы": [
-        "1743839",
-        "1744235"
-    ]
-}
-
-
 def log(massage, level="info"):
     print(f"[{level}]: {massage}")
 
@@ -22,6 +14,7 @@ class ReManga_downloader:
     def __init__(self):
         self.download_attempts = 3
         self.pause_between_download_attempts = 5
+        self.comicsDir = "comics"
 
     
     def manga_download_url_to_id_formater(self, title_name, url_list:list):
@@ -216,13 +209,14 @@ class ReManga_downloader:
             down_path = f"{chapter_num}-{chapter_name.replace(" ", "_")}" if not chapter_name == "" else chapter_num
 
             save_path = os.path.join(str(tome), f"{chapter_num}-{chapter_name.replace(" ", "_")}")
-
+            
+            full_path = os.path.join(self.comicsDir, root, save_path)
             #os.makedirs(pre_path, exist_ok=True)
 
             for num, page in chapter["pages"].items():
                 name = f"{num}{os.path.splitext(page)[1]}"
                 
-                out_list.append([root, save_path, name, page])
+                out_list.append([full_path, name, page])
 
         return out_list     # 
 
@@ -237,9 +231,9 @@ class ReManga_downloader:
         
         over_parts = len(download_data)
         for i, part in enumerate(download_data, start=1):
-            path = os.path.join(part[0], part[1])
-            file_name = part[2]
-            url = part[3]
+            path = part[0]
+            file_name = part[1]
+            url = part[2]
 
             log(f"Загрузка страницы: {i}/{over_parts}")
 
@@ -454,33 +448,7 @@ if __name__ == "__main__":
 
     c_data = c.manga_download_url_to_id_formater("Пособие по поиску работы", url_set)
 
-    ot_data = c.get_json_data_from_server(c_data ,test_mode=True)
-
-#    for i in ot_data:
-#        for i1 in ot_data[i]:
-#
-#            print(i, i1)
-
-    pass
-
-
-#with open("cash.json", "w") as f:
-#    json.dump(data, f, indent=4, ensure_ascii=False)
-#
-#pages = data.get("pages")
-#image_urls = [page["link"] for page in pages]
-#
-#print(image_urls)
+    c.main(c_data)
 
 
 
-# Достаём массив страниц. Структура может отличаться, но обычно это data["pages"]
-# Каждая страница — это массив изображений.
-#pages = data.get("pages", [])
-#
-## Собираем все URL в один плоский список
-#image_urls = [img["link"] for page in pages for img in page]
-#
-#print(f"Найдено {len(image_urls)} изображений:")
-#for i, img_url in enumerate(image_urls, 1):
-#    print(f"{i}. {img_url}")
