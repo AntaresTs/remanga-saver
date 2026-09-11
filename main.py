@@ -74,6 +74,85 @@ class ReManga_downloader:
 
         self.reqSession = s
 
+    def get_chapter_id_from_cash(self, cash):
+        capter_id_list = []
+
+        if cash == {}:
+            log("Список хранимых в кеше id глав пуст")
+            return capter_id_list
+
+        for manga_name in cash:
+            for json_data in cash[manga_name]:
+                capter_id_list.append(json_data["id"])
+
+        log("Из кэша загружен список id глав")
+        return capter_id_list
+        
+    
+    def get_json_data_from_server(self, chapter_id_list, test_mode=False):
+        """
+        Получает данные для каажой главы в списке.
+        принимает на вход словарь формата:
+            {
+                "Manga name": [
+                    "chapter_id",
+                    "1744235"
+                ]
+            }
+
+        """
+        
+        dataset = {}
+        also_exist_id = []
+
+        # получение данных записанных в кэше
+        cash = work_wich_cash("serv_resp", "download")
+        dataset = cash if not type(cash) == int else {}
+
+        # Формирование id глав хранимых в хэше
+        also_exist_id = get_chapter_id_from_cash(dataset)
+
+        # Парсинг данных
+        for manga_name, chapter_id_list in manga_download_list.items():
+
+            server_json_list = []
+            for chapter_id in chapter_id_list:
+                data = {"error": None}
+
+                if chapter_id in also_exist_id:
+                    log(f"capter id: {chapter_id} alredy exist")
+                    break
+
+                for i in range(self.download_attempts):
+                    url = f"https://api.remanga.org/api/v2/titles/chapters/{chapter_id}/"
+                    
+                    try:
+                        if not test_mode:
+                            response = self.reqSession.get(url)
+                            response.raise_for_status()  # Проверка на ошибки HTTP
+                            data = response.json()
+                            log(f"Response successful received from server")
+                            break
+                        else:
+                            log(f"Response from url: {url}")
+                            data = "TEST"
+
+                    except Exception as e:
+                        log(f"request error. attempt: {i+1}/{attempts}\nError: {e}", "error")
+                        time.sleep(self.pause_between_download_attempts)
+
+                server_json_list.append(data)
+
+            # TODO Возникнет ошибкка если изначально словарь будет пуст
+            dataset[manga_name].append(server_json_list)
+            time.sleep(2)
+
+        # Обновление хэша
+        if not test_mode:
+            status = work_wich_cash("serv_resp", "save", dataset)
+
+        return dataset
+
 
     def get_dataset_for_site(self, chapter_id_list:dict):
         """
@@ -86,15 +165,12 @@ class ReManga_downloader:
         # В конце полученный результат записывается в кэш
         # Запись: cach = cash + new_data
 
-        attempts = 3
-
         out_data = {}
         for manga_name, chapter_id_list in manga_download_list.items():
 
             server_json_list = []
             for chapter_id in chapter_id_list:
                 data = {"error": None}
-
 
                 for i in range(self.download_attempts):
                     url = f"https://api.remanga.org/api/v2/titles/chapters/{chapter_id}/"
@@ -116,7 +192,6 @@ class ReManga_downloader:
             time.sleep(2)
 
         return out_data
-
 
     def pars_json_data(self, data):
         """
@@ -214,6 +289,53 @@ class ReManga_downloader:
                 with open(os.path.join(path, file_name), 'wb') as f:
                     for chunk in r.iter_content(chunk_size=4024):
                         f.write(chunk)
+    
+    def work_wich_cash(self, cash_type, mode="auto", data=None):
+
+        cash_dir = "cash"
+        files = {
+            "serv_resp": {
+                "file_name": "cash_resp"
+            },
+            "procces": {
+                "file_name": "cash_prrsp"
+            }
+        }
+        
+        os.makedirs(cash_dir, exist_ok=True)
+        filename = (files[cash_type] or {}).get("file_name")
+        path = os.path.join(cash_dir, filename)
+
+
+        if not filename:
+            raise Exception(f"Cash type: {cash_type} not supported")
+            return 1
+
+        if mode == "auto":
+            pass
+        elif mode == "save":
+            if (not data) and (not type(data) == dict):
+                raise Exception("The format of data is erroneous")
+                return 3
+
+            with open(path, "w") as f:
+                json.dump(data, f, indent=4, ensure_ascii=False)
+
+            return 0
+
+        elif mode == "download":
+            if os.path.isfile(path):
+
+                with open(path, "r") as f:
+                    data = json.load(f)
+
+                return (data or {})
+            else:
+                return {}
+
+        else:
+            raise Exception(f"Mode {mode} unknow")
+            return 2
 
         
     def load_data_from_cash(self):
@@ -258,9 +380,6 @@ def main():
 
 if __name__ == "__main__":
     c = ReManga_downloader(manga_download_list)
-    #c.init_request_session()
-    #load_data = c.load_data_from_cash()
-    #c_data = c.convert_for_download(load_data)
 
     url_set = [
         "https://remanga.org/manga/job-search-guide/1743839",
@@ -283,6 +402,8 @@ if __name__ == "__main__":
 
 
     c_data = c.manga_download_url_to_id_formater("Пособие по поиску работы", url_set)
+
+    ot_data = c.get_json_data_from_server(c_data ,test_mode=True)
 
     for i in c_data:
         for i1 in c_data[i]:
