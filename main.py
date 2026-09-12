@@ -1,4 +1,5 @@
-import requests, json, time, os
+import requests, json, time, os, random
+from progress.bar import IncrementalBar
 
 # url exemple
 # https://img-reserve.reimg2.org/images/143191/f00c4f661f46016c4ffe7814815af2c4/ed5125c9b4b85d6dd0a9e10e8cbf6526.webp
@@ -31,32 +32,43 @@ class ReManga_downloader:
         return chapter_id_list
 
         
-    def init_parser(self, manga_download_list):
-        self.manga_download_data = manga_download_list
+    def init_parser(self):
 
         try:
-            init_request_session()
+            self.init_request_session()
             log("Request session init")
 
         except Exception as e:
             log(f"Error request session init. Exception: {e}")
     
+    def _get(self, url: str, params: dict = None):
+        return setf.reqSession.get(url, param=param)
 
     def init_request_session(self):
         
         # Задаем заголовки
         headers = {
-            "Accept": "application/json", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+
+#            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
             "Referer": "https://remanga.org/",
             "Origin": "https://remanga.org",
             "content-type": "application/json",
-            "accept-encoding": "gzip, deflate, br, zstd"
+            "Accept-Encoding": "gzip, deflate, br, zstd",
+            "accept-language": "en-US,en;q=0.9",
+            "priority": "u=1, i",
+            "sec-ch-ua-platform": "Windows"
+
         }
 
         # Укажем куки
         cookies = {
-            "yandexuid": "9111597671788425404",
-            "yashr": "8854492401788425404",
+                "reader:promo-modal": "%7B%22state%22%3A%7B%22readedChapters%22%3A%5B1954644%2C1743839%2C1744259%2C1744279%2C1744321%2C1744235%2C1911994%5D%7D%2C%22version%22%3A1%7D",
+                "reader:settings": "%7B%22novel%22%3A%7B%22fontSize%22%3A19%2C%22lineHeight%22%3A1.7%7D%2C%22manga%22%3A%7B%22imageServer%22%3A2%2C%22readerType%22%3A%22slider%22%2C%22clickableAreaId%22%3A1%2C%22imageFit%22%3A%22width%22%2C%22zoom%22%3Afalse%2C%22clickableAreaZone%22%3A%22page%22%2C%22gapBetweenItems%22%3A0%2C%22notes%22%3Afalse%2C%22pageIndicator%22%3Atrue%7D%2C%22common%22%3A%7B%22hidePageIndex%22%3Afalse%2C%22brightness%22%3A100%2C%22autoLoad%22%3Afalse%2C%22tapToScroll%22%3Afalse%2C%22tapToScrollSize%22%3A50%2C%22autoScrollSize%22%3A1%2C%22containerWidth%22%3A100%2C%22backActionStrategyId%22%3A1%2C%22hotkeys%22%3A%7B%220%22%3A%5B%22D%2FKeyD%22%2C%22ArrowRight%2FArrowRight%22%5D%2C%221%22%3A%5B%22A%2FKeyA%22%2C%22ArrowLeft%2FArrowLeft%22%5D%2C%222%22%3A%5B%5D%2C%223%22%3A%5B%5D%2C%224%22%3A%5B%22E%2FKeyE%22%2C%22ArrowRight%2FCtrl%2BArrowRight%22%5D%2C%225%22%3A%5B%22Q%2FKeyQ%22%2C%22ArrowLeft%2FCtrl%2BArrowLeft%22%5D%2C%226%22%3A%5B%22%2B%2FEqual%22%2C%22%3D%2FEqual%22%5D%2C%227%22%3A%5B%22-%2FMinus%22%2C%22_%2FMinus%22%5D%7D%7D%7D",
+                "__ddg8_": "AsbA1zflQbLQaOo6",
+                "__ddg1_": "FZ8lTbBDWUhzdS4Vsy4K",
+                "__ddg10_": "1789179113"
 
         }
 
@@ -78,7 +90,7 @@ class ReManga_downloader:
                 capter_id_list.append(json_data["id"])
 
         log("Из кэша загружен список id глав")
-        return capter_id_list
+        return list(map(str, capter_id_list))
         
     
     def get_json_data_from_server(self, chapter_id_list, test_mode=False):
@@ -104,8 +116,12 @@ class ReManga_downloader:
         # Формирование id глав хранимых в хэше
         also_exist_id = self.get_chapter_id_from_cash(dataset)
 
+
+
         if test_mode:
-            log(f"Входные данные: \n{chapter_id_list}\n")
+            log(f"Входные данные: \n{chapter_id_list}")
+            log(f"also_exist_id:\n{also_exist_id}")
+
 
         # Парсинг данных
         for manga_name, chapter_id_list in chapter_id_list.items():
@@ -117,14 +133,15 @@ class ReManga_downloader:
 
                 if chapter_id in also_exist_id:
                     log(f"capter id: {chapter_id} alredy exist")
-                    break
+                    continue
 
                 for i in range(self.download_attempts):
                     url = f"https://api.remanga.org/api/v2/titles/chapters/{chapter_id}/"
                     
                     try:
                         if not test_mode:
-                            response = self.reqSession.get(url)
+                            #response = self.reqSession.get(url)
+                            response = self._get(url)
                             response.raise_for_status()  # Проверка на ошибки HTTP
                             data = response.json()
                             log(f"Response successful received from server")
@@ -135,20 +152,21 @@ class ReManga_downloader:
                         break
 
                     except Exception as e:
-                        log(f"request error. attempt: {i+1}/{attempts}\nError: {e}", "error")
+                        log(f"request error. attempt: {i+1}/{self.download_attempts}\nError: {e}", "error")
                         time.sleep(self.pause_between_download_attempts)
 
                 server_json_list.append(data)
                 
+                time.sleep(random.uniform(2.5, 4.0))
+
             dataset.setdefault(manga_name, []).extend(server_json_list)
-            time.sleep(2)
 
         # Обновление хэша
         if not test_mode:
-            status = work_wich_cash("serv_resp", "save", dataset)
+            status = self.work_wich_cash("serv_resp", "save", dataset)
         else:
-            print(dataset)
-
+#            print(dataset)
+            print("OK")
         return dataset
 
 
@@ -190,7 +208,8 @@ class ReManga_downloader:
 
 
     def convert_for_download(self, data):
-        """
+        """!
+        @brief
         Берет на вход обработанные данные, и возвращает готовый лист с данными для вставки в функцию скачивания
         """
         
@@ -208,7 +227,7 @@ class ReManga_downloader:
             root = f"{publ}-{manga_name.replace(" ", "_")}"
             down_path = f"{chapter_num}-{chapter_name.replace(" ", "_")}" if not chapter_name == "" else chapter_num
 
-            save_path = os.path.join(str(tome), f"{chapter_num}-{chapter_name.replace(" ", "_")}")
+            save_path = os.path.join(f"Volume-{tome}", f"{chapter_num}-{chapter_name.replace(" ", "_")}")
             
             full_path = os.path.join(self.comicsDir, root, save_path)
             #os.makedirs(pre_path, exist_ok=True)
@@ -221,7 +240,7 @@ class ReManga_downloader:
         return out_list     # 
 
 
-    def download_pic(self, download_data:list): 
+    def download_pic(self, download_data:list, is_exist="skip"): 
         """
         Функция пакетного скачивания файлов
         принимает на вход лист формата:
@@ -230,23 +249,42 @@ class ReManga_downloader:
         """
         
         over_parts = len(download_data)
+        log("Начало загрузки:")
+
+        pbar = IncrementalBar('Download page:', max = over_parts)
+
         for i, part in enumerate(download_data, start=1):
             path = part[0]
             file_name = part[1]
             url = part[2]
 
-            log(f"Загрузка страницы: {i}/{over_parts}")
+            full_path = os.path.join(path, file_name)
+
+            if os.path.isfile(full_path) and is_exist == "skip":
+                continue
 
             os.makedirs(path, exist_ok=True)
-            log(f"Create dirs: {path}")
+            #log(f"Create dirs: {path}")
+            #log(f"Загрузка страницы: {i}/{over_parts}")
 
             # Загружаем по чанкам
             with self.reqSession.get(url, stream=True) as r:
-                r.raise_for_status()
-                lof("Start download page")
-                with open(os.path.join(path, file_name), 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=4024):
-                        f.write(chunk)
+
+                try:
+                    r.raise_for_status()
+#                    log("Start download page")
+                    with open(full_path, 'wb') as f:
+                        for chunk in r.iter_content(chunk_size=4024):
+                            f.write(chunk)
+
+                except requests.exceptions.HTTPError as e:
+                    log(f"Pars error: {e}")
+                    log(f"Input data: {r.text}")
+                    raise
+
+            pbar.goto(i)
+
+            time.sleep(random.uniform(2.5, 4.0))
 
     
     def work_wich_cash(self, cash_type, mode="auto", data=None):
@@ -301,13 +339,13 @@ class ReManga_downloader:
 
 ## Пока что начальная функция 
 
-    def gen_info_file(self, proc_dataset, tags, genes language="ru"):
+    def gen_info_file(self, proc_dataset, tags:list, genes:list, language="ru"):
 
         for manga_name, json_data_list in proc_dataset.items():
             total_volumes = len(json_data_list) 
                 
             authors = []
-            for publisher in json_data_list[0]["publishers"]
+            for publisher in json_data_list[0]["publishers"]:
                 authors.append(publisher["name"])
 
             root = f"{authors[0]}-{manga_name.replace(" ", "_")}"
@@ -327,21 +365,30 @@ class ReManga_downloader:
 #        self.description: Optional[str] = None  #!< Описание
         pass
     
-    def main(chapter_list):
+    def main(self, chapter_list):
+
+        log("0/4: Start")
+
+        # Инициилизируем парсес
+        self.init_parser()
 
         # Формируем первичные данные
-        dataset = get_json_data_from_server(chapter_list)
+        dataset = self.get_json_data_from_server(chapter_list)
+        log("1/4: The list of data from the server has been generated")
 
         # Обрабатываем данные
-        proc_dataset = pars_json_data()
+        proc_dataset = self.pars_json_data(dataset)
+        log("2/4: Primary data processed")
 
         # Нормализуем данные для скачивания
-        norm_download_data = convert_for_download()
+        norm_download_data = self.convert_for_download(proc_dataset)
+        log("3/4: Download data generated")
 
         #gen_info_file(norm_download_data[0][0], proc_dataset)
 
         # Скачиваем данные
-        download_pic(norm_download_data)
+        self.download_pic(norm_download_data)
+        log("4/4: Download complete")
         pass
 
         
@@ -450,5 +497,6 @@ if __name__ == "__main__":
 
     c.main(c_data)
 
+    #c.get_json_data_from_server(c_data, test_mode=True)
 
 
