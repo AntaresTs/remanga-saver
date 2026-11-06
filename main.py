@@ -1,10 +1,6 @@
 import requests, json, time, os, random
 from progress.bar import IncrementalBar
 
-# url exemple
-# https://img-reserve.reimg2.org/images/143191/f00c4f661f46016c4ffe7814815af2c4/ed5125c9b4b85d6dd0a9e10e8cbf6526.webp
-
-
 
 # ID главы из URL страницы (например, .../job-search-guide/1743839/)
 
@@ -476,27 +472,28 @@ def main():
 if __name__ == "__main__":
     c = ReManga_downloader()
 
-    url_set = [
-        "https://remanga.org/manga/job-search-guide/1743839",
-        "https://remanga.org/manga/job-search-guide/1744235",
-        "https://remanga.org/manga/job-search-guide/1744236",
-        "https://remanga.org/manga/job-search-guide/1744259",
-        "https://remanga.org/manga/job-search-guide/1744279",
-        "https://remanga.org/manga/job-search-guide/1744321",
-        "https://remanga.org/manga/job-search-guide/1787409",
-        "https://remanga.org/manga/job-search-guide/1836908",
-        "https://remanga.org/manga/job-search-guide/1854806",
-        "https://remanga.org/manga/job-search-guide/1869503",
-        "https://remanga.org/manga/job-search-guide/1887781",
-        "https://remanga.org/manga/job-search-guide/1895269",
-        "https://remanga.org/manga/job-search-guide/1911994",
-        "https://remanga.org/manga/job-search-guide/1925105",
-        "https://remanga.org/manga/job-search-guide/1938334",
-        "https://remanga.org/manga/job-search-guide/1954644"
-    ]
-
-
-    c_data = c.manga_download_url_to_id_formater("Пособие по поиску работы", url_set)
+#    Пример входных данных
+#    url_set = [
+#        "https://remanga.org/manga/job-search-guide/1743839",
+#        "https://remanga.org/manga/job-search-guide/1744235",
+#        "https://remanga.org/manga/job-search-guide/1744236",
+#        "https://remanga.org/manga/job-search-guide/1744259",
+#        "https://remanga.org/manga/job-search-guide/1744279",
+#        "https://remanga.org/manga/job-search-guide/1744321",
+#        "https://remanga.org/manga/job-search-guide/1787409",
+#        "https://remanga.org/manga/job-search-guide/1836908",
+#        "https://remanga.org/manga/job-search-guide/1854806",
+#        "https://remanga.org/manga/job-search-guide/1869503",
+#        "https://remanga.org/manga/job-search-guide/1887781",
+#        "https://remanga.org/manga/job-search-guide/1895269",
+#        "https://remanga.org/manga/job-search-guide/1911994",
+#        "https://remanga.org/manga/job-search-guide/1925105",
+#        "https://remanga.org/manga/job-search-guide/1938334",
+#        "https://remanga.org/manga/job-search-guide/1954644"
+#    ]
+#
+#    При передачи набора ссылок, так же передается и назание комикса
+#    c_data = c.manga_download_url_to_id_formater("Пособие по поиску работы", url_set)
 
     c.main(c_data)
 
