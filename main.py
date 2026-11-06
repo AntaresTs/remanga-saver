@@ -17,6 +17,11 @@ class ReManga_downloader:
         self.pause_between_download_attempts = 5
         self.comicsDir = "comics"
 
+        self.cookies = {
+                "reader:promo-modal": "",
+                "reader:settings": "",
+        }
+
     
     def manga_download_url_to_id_formater(self, title_name, url_list:list):
         """
@@ -33,6 +38,9 @@ class ReManga_downloader:
 
         
     def init_parser(self):
+        """
+        Инициализация парсера
+        """
 
         try:
             self.init_request_session()
@@ -45,6 +53,9 @@ class ReManga_downloader:
         return setf.reqSession.get(url, param=param)
 
     def init_request_session(self):
+        """
+        Создание request Session 
+        """
         
         # Задаем заголовки
         headers = {
@@ -63,18 +74,10 @@ class ReManga_downloader:
         }
 
         # Укажем куки
-        cookies = {
-                "reader:promo-modal": "%7B%22state%22%3A%7B%22readedChapters%22%3A%5B1954644%2C1743839%2C1744259%2C1744279%2C1744321%2C1744235%2C1911994%5D%7D%2C%22version%22%3A1%7D",
-                "reader:settings": "%7B%22novel%22%3A%7B%22fontSize%22%3A19%2C%22lineHeight%22%3A1.7%7D%2C%22manga%22%3A%7B%22imageServer%22%3A2%2C%22readerType%22%3A%22slider%22%2C%22clickableAreaId%22%3A1%2C%22imageFit%22%3A%22width%22%2C%22zoom%22%3Afalse%2C%22clickableAreaZone%22%3A%22page%22%2C%22gapBetweenItems%22%3A0%2C%22notes%22%3Afalse%2C%22pageIndicator%22%3Atrue%7D%2C%22common%22%3A%7B%22hidePageIndex%22%3Afalse%2C%22brightness%22%3A100%2C%22autoLoad%22%3Afalse%2C%22tapToScroll%22%3Afalse%2C%22tapToScrollSize%22%3A50%2C%22autoScrollSize%22%3A1%2C%22containerWidth%22%3A100%2C%22backActionStrategyId%22%3A1%2C%22hotkeys%22%3A%7B%220%22%3A%5B%22D%2FKeyD%22%2C%22ArrowRight%2FArrowRight%22%5D%2C%221%22%3A%5B%22A%2FKeyA%22%2C%22ArrowLeft%2FArrowLeft%22%5D%2C%222%22%3A%5B%5D%2C%223%22%3A%5B%5D%2C%224%22%3A%5B%22E%2FKeyE%22%2C%22ArrowRight%2FCtrl%2BArrowRight%22%5D%2C%225%22%3A%5B%22Q%2FKeyQ%22%2C%22ArrowLeft%2FCtrl%2BArrowLeft%22%5D%2C%226%22%3A%5B%22%2B%2FEqual%22%2C%22%3D%2FEqual%22%5D%2C%227%22%3A%5B%22-%2FMinus%22%2C%22_%2FMinus%22%5D%7D%7D%7D",
-                "__ddg8_": "AsbA1zflQbLQaOo6",
-                "__ddg1_": "FZ8lTbBDWUhzdS4Vsy4K",
-                "__ddg10_": "1789179113"
-
-        }
 
         s = requests.Session()
         s.headers.update(headers)
-        s.cookies.update(cookies)
+        s.cookies.update(self.cookies)
 
         self.reqSession = s
 
